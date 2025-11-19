@@ -217,15 +217,15 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
 
 * Performance optimization: Finding slow operations
 
-# Protocols
+## Protocols
 
-## OTLP(Open Telemetry Protocol):
+### OTLP(Open Telemetry Protocol):
 
 * OTLP supports formats like binary, JSON.
 * It can deliver traces, metrics, or logs to /v1/traces, /v1/metrics, /v1/logs.
 * It works with any language, it’s fast, can batch lots of data, and handles re-sending if something goes wrong.
 
-## Prometheus Exposition Format
+### Prometheus Exposition Format
 
 * Every few seconds Prometheus looks at your app and generates the report as how many errors, how much energy used
   
@@ -247,7 +247,7 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
   
 * This info is visible at /metrics so Prometheus can collect it automatically.
 
-## StatsD Protocol
+### StatsD Protocol
 
 *  Simple messages like user.login.attempts:1|c = “someone logged in, add 1 to the counter” Or api.response_time:142|ms = “this action took 142 milliseconds.”
   
@@ -255,7 +255,7 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
   
 *  Metric types: Counter, Gauge, Timer/Histogram.
 
-## Syslog Protocol
+### Syslog Protocol
 
 * Used for decades for sending computer and system event logs.
   
@@ -263,7 +263,7 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
   
 * Key info includes: priority, timestamp, server name, app name, process ID, message type, extra info, and your message.
 
-## Jaeger Thrift Protocol 
+### Jaeger Thrift Protocol 
 
 * Think of Jaeger as an efficient, specialized courier for your trace journeys.
   
@@ -273,9 +273,9 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
 
 * It packs up all the trace spans (steps in a request journey) efficiently, sends them, and gathers them so you can view how a request moved through your app.
 
-# Cradinality
+## Cradinality
 
-## Definition:
+### Definition:
 
  Cardinality is the number of groups or categories. Example: If you’re only tracking 2 things, like red and blue balls, cardinality is low (just 2). If you give each ball a color, serial number, you could have thousands or millions of unique groups — that’s high cardinality.
 
@@ -288,6 +288,56 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
  Safe labels: Things with just a few options: GET/POST, error codes, server names, datacenter location — limited variety.
 
  Only use safe labels for metrics, so you don’t overload your system. Dangerous labels cause cardinality explosion.
+
+ # Data Collection Architecture
+
+ ## Collector:
+ 
+ A collector is the middleman which recieves the data from applications, filters it(filters bad data and combines related data) and then sends it back to the backend (database, observability platforms(eg. Grafana, Datadog).
+
+ Problems with sending back the data to the backend is that every app should know how to filter, batch and send data, gets all data including garbage data, want to use new backend then have to change every app, and if backend is down      data is lost.
+
+ ## Collection models:
+
+ ### Agent Based Collection:
+ 
+ Install an agent(small program) on app/host.
+
+ Agent has direct access to the app's code
+
+ Data is extracted early, before wasting resources
+
+ Can make smart decisions about what to keep
+
+ Example: Datadog agent, OpenTelemetry Collector running as agent
+
+### Agentless Collection:
+ 
+ Collector which pulls data from app/host without installing anything on them.
+
+ App exposes matrics endpoint for the collectors to read the data periodically without caring who else is reading this data.
+
+### eBPF-based collection: 
+
+ Monitoring happens at kernel level. It works like eBPF program runs inside the kernel and automatically see all network call, system call and events without touching the code.
+ 
+ Complete visibility: Sees everything
+
+ Secure: Kernel verifies programs before running them
+
+ Built-in: Already in modern Linux kernels, nothing to install
+
+ ### Advantages:
+ 
+* Minimal resource overhead
+
+* No app modifications
+
+* Complete invisibility (app doesn't know it's monitored)
+
+* Catches all events without miss
+
+* Great for security monitoring too
  
   
 
