@@ -277,7 +277,7 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
 
 ### Definition:
 
- Cardinality is the number of groups or categories. Example: If you’re only tracking 2 things, like red and blue balls, cardinality is low (just 2). If you give each ball a color, serial number, you could have thousands or millions of unique groups — that’s high cardinality.
+ Cardinality is the number of groups or categories. Example: If you’re only tracking 2 things, like red and blue balls, cardinality is low (just 2). If you give each ball a color and, serial number, you could have thousands or millions of unique groups — that’s high cardinality.
 
  It matters because every unique group needs its own record (its own time series). Each one takes up memory, disk space, and affects speed.
 
@@ -293,33 +293,33 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
 
  ## Collector:
  
- A collector is the middleman which recieves the data from applications, filters it(filters bad data and combines related data) and then sends it back to the backend (database, observability platforms(eg. Grafana, Datadog).
+ A collector is the middleman that receives the data from applications, filters it(filters bad data and combines related data), and then sends it back to the backend (database, observability platforms, eg, Grafana, Datadog).
 
- Problems with sending back the data to the backend is that every app should know how to filter, batch and send data, gets all data including garbage data, want to use new backend then have to change every app, and if backend is down      data is lost.
+ Problems with sending back the data to the backend are that every app should know how to filter, batch, and send data, get all data, including garbage data, want to use a new backend, then have to change every app, and if the backend is down, data is lost.
 
  ## Collection models:
 
- ### Agent Based Collection:
+ ### Agent-Based Collection:
  
  Install an agent(small program) on app/host.
 
- Agent has direct access to the app's code
+ The agent has direct access to the app's code
 
  Data is extracted early, before wasting resources
 
  Can make smart decisions about what to keep
 
- Example: Datadog agent, OpenTelemetry Collector running as agent
+ Example: Datadog agent, OpenTelemetry Collector running as an agent
 
 ### Agentless Collection:
  
- Collector which pulls data from app/host without installing anything on them.
+ A collector that pulls data from the app/host without installing anything on it.
 
- App exposes matrics endpoint for the collectors to read the data periodically without caring who else is reading this data.
+ App exposes the matrics endpoint for the collectors to read the data periodically without caring who else is reading this data.
 
 ### eBPF-based collection: 
 
- Monitoring happens at kernel level. It works like eBPF program runs inside the kernel and automatically see all network call, system call and events without touching the code.
+ Monitoring happens at the kernel level. It works like an eBPF program runs inside the kernel and automatically sees all network calls, system calls, and events without touching the code.
  
  Complete visibility: Sees everything
 
@@ -335,13 +335,101 @@ baggage: user_tier=premium,experiment_id=exp_42,feature_flag=new_checkout
 
 * Complete invisibility (app doesn't know it's monitored)
 
-* Catches all events without miss
+* Catches all events without missing
 
 * Great for security monitoring too
- 
-  
 
-  
+### Push model
+The app sends the data when it wants, and the collector receives it.
+
+Flexible timing, no need for fixed endpoints, good for frequent updates
+
+### Pull model
+The collector asks for the data, and the app responds by exposing the related endpoint.
+
+Easy to verify authenticity
+
+Predictable (know exactly when the collection happens)
+
+Can control capacity (don't accept random streams)
+
+Can distribute collectors easily
+
+### Process happening at collection endpoint:
+
+#### Filtering unwanted data:
+It is the process of removing the data that is not needed. It is required not to send garbage data to the expensive backend.
+
+#### Sampling strategy:
+
+Head-based sampling: The Decision to keep or throw the data is being made very early at the start of a request.
+It’s very fast and efficient—no waiting for more info. It saves CPU and memory because only selected requests create full trace data.
+The system can’t know in advance if a request will end up being important—maybe it fails, is extra slow, or hits a bug. But you already decided whether to keep or discard it. If the request fails and you already said No you lose valuable debugging info.
+
+Tail-based sampling: The decision to keep or drop a trace is made after the whole request finishes—when all the data is collected.
+It’s great for debugging. You must collect all requests and spans first, which uses more CPU and memory, before filtering. It’s a bit slower and more complex.
+
+#### Probabilistic:
+
+#### Batching and buffering:
+Batching: Instead of sending the data separately one by one, you collect the data and send it as a group/batch.
+
+Buffering: Storing the data temporarily so that it can be processed in more efficient chunks.
+
+#### Metadata enrichment
+It is adding useful information to your data so that later it can be searched, used, and analyzed easily.
+eg.
+
+request_duration: 250ms
+
+service: payment-api
+
+region: us-east-1
+
+environment: production
+
+datacenter: aws-1a
+
+team: payments
+
+#### Protocol translation:
+The conversion happening between the data formats is called protocol translation. Apps use different protocols, and the backend might require a different one. That's when protocol translation is needed.
+
+### Collection at different layers:
+
+#### Application layer: 
+
+Apps keep track what they do using the SDK (Software development kit)
+
+#### System layer:
+
+Collect metrics about the system —CPU, memory, disk usage, running processes. This helps monitor infrastructure health.
+
+#### Network layer:
+
+Monitors network traffic between services without changing apps. Used for debugging network issues.
+
+#### Kernel layer:
+
+Runs monitoring code directly inside the OS Kernel. No overhead or app changes are required.eg. eBPF.
+
+### Auto instrumentation:
+Observability code is automatically added when the app starts—no coding required. Works with many popular frameworks and is quick to set up.
+
+Pros: Fast setup, no code changes, broad coverage
+
+Cons: Less control, can’t add custom business info, may miss some parts
+
+### Manual instrumentation:
+Observability code is added using the custom code which can gather the chosen/important info.
+
+Pros: Full control, better for critical paths
+
+Cons: More coding, must understand tracing
+
+# Backend Pipeline Architecture
+
+   
 
 
 
