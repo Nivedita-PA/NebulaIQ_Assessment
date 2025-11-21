@@ -1411,7 +1411,7 @@ Deployment at 9 AM
 
 To find root cause, must trace through entire chain.
 
-## 🔍 Root Cause Analysis (RCA) Techniques
+## Root Cause Analysis (RCA) Techniques
 
 rca-guide
 
@@ -1875,7 +1875,7 @@ START: "Something is broken!"
 │  └─ Action: Open dashboard, check severity
 │
 ├─ Question 2: "When did it start?"
-│  └─ Action: Look at time on graphs
+│  └─ Action: Look at time on the graphs
 │
 ├─ Question 3: "What broke?"
 │  └─ Action: Check which service/component affected
@@ -1910,7 +1910,7 @@ Current: Dashboard takes 10 seconds to load
 
 Better: Shows in 2 seconds with zoom for details
 
-Users: "I left to get coffee while dashboard loaded"
+Users: "I left to get coffee while the dashboard loaded."
 
 ### Problem 3: Unclear Drill-Down
 
@@ -1924,9 +1924,9 @@ Users: "Where am I now? What was my time range?"
 
 Current: 100 alerts per day (99 false positives)
 
-Better: Smart filtering, group related alerts
+Better: Smart filtering, group-related alerts
 
-Users: "I ignore all alerts because most are noise"
+Users: "I ignore all alerts because most are noise."
 
 ### Problem 5: Hard to Navigate Between Tools
 
@@ -1934,6 +1934,6 @@ Current: Open Grafana → then open Datadog → then log into Jaeger
 
 Better: Single pane of glass with all data
 
-Users: "I forget which tool shows what"
+Users: "I forget which tool shows what."
 
 
