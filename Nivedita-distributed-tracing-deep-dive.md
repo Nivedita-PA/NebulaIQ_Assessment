@@ -1795,5 +1795,306 @@ Traces guide you like a map, showing where the request spent its time and where 
 - Fix: Improve caching strategy
 
 ---
+# 6. Practical Analysis 
+## Instrument a multiservice app
 
+### Three microservices created:
+
+![diagram](images/microservice1.png)
+
+![diagram](images/microservice2.png)
+
+![diagram](images/micorservice3.png)
+
+### List of traces:
+
+![diagram](images/listOfTraces.png)
+
+### Traces generated:
+
+![diagram](images/serviceAtraces.png)
+
+### Trace timeline:
+
+![diagram](images/traceTimeline.png)
+
+### Spans in a trace:
+
+![diagram](images/TraceSpanTable.png)
+
+### Dependency diagram:
+
+![diagram](images/dependencyDiagram.png)
+
+### Trace and span id in logs:
+
+![diagram](images/traceAndSpanId.png)
+
+I describe the practical work I did to understand tracing, trace-to-log correlation, and sampling using a small multi-service Java application with Jaeger and OpenTelemetry.
+
+### 6.1 Setup Summary **Tracing System:** 
+
+I used **Jaeger all-in-one** running in Docker. 
+- Jaeger UI was available at: http://localhost:16686.
+- I exposed OTLP gRPC on port **4317** so the OpenTelemetry Java agent could export traces.
+
+**Multi-Service Application:** I created **three Spring Boot services** in Java:
+  - **Service A** (port 8080): Entry point. Exposes /order. - When /order is called, it logs a message and calls Service B.
+  - **Service B** (port 8081): Exposes /process. - When /process is called, it logs a message and calls Service C.
+  - **Service C** (port 8082): Exposes /db. - Simulates a database call and adds an **artificial delay** (e.g., Thread.sleep(1000)).
+    
+Call flow:
+Example:
+
+Client → Service A (/order) → Service B (/process) → Service C (/db)
+
+Instrumentation:
+
+I used the OpenTelemetry Java Agent (opentelemetry-javaagent.jar) with each service.
+
+I ran each service with JVM flags like:
+
+java -javaagent:../opentelemetry-javaagent.jar \
+
+  -Dotel.exporter.otlp.protocol=grpc \
+  
+  -Dotel.exporter.otlp.endpoint=http://localhost:4317 \
+  
+  -Dotel.resource.attributes=service.name=service-a \
+  
+  -Dotel.metrics.exporter=none \
+  
+  -Dotel.logs.exporter=none \
+  
+  -jar target/demo-0.0.1-SNAPSHOT.jar
+  
+This enabled automatic tracing of incoming HTTP requests and outgoing HTTP calls between services.
+
+### 6.2 Trace-to-Log Correlation
+
+#### 6.2.1 Adding Trace ID to Log Messages
+
+My goal was to make every log line contain:
+
+trace_id
+
+span_id
+
+So I can connect logs to specific traces.
+
+I did not add any special tracing code in my Java methods.
+Instead, I:
+
+Configured Logback to print MDC(Map Diagnostic Context) fields:
+
+Created src/main/resources/logback-spring.xml in each service:
+
+```
+xml
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] trace_id=%X{trace_id} span_id=%X{span_id} %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
+```
+
+%X{trace_id} and %X{span_id} read values from the logging MDC.
+
+
+Relied on the OpenTelemetry Java Agent:
+
+The agent automatically puts the current trace context (trace ID and span ID) into MDC when a request is being handled.
+
+Added normal log lines in my endpoints (example in Service A):
+
+java
+
+Copy code
+
+private static final Logger log = LoggerFactory.getLogger(DemoAApplication.class);
+
+@GetMapping("/order")
+
+public Map<String, Object> order() {
+
+    log.info("Received /order request in Service A, calling Service B");
+    
+    // Call Service B
+    
+    ...
+    
+}
+
+When I called:
+curl http://localhost:8080/order
+
+the logs in the terminal looked like:
+
+```
+text
+Copy code
+2025-11-24 01:05:22 INFO  [http-nio-8080-exec-1] trace_id=8f3ac9b7e95b4c2b8d7f23e6c4a9e123 span_id=9b23e8f4ad6c1234 com.example.demo.DemoAApplication - Received /order request in Service A, calling Service B
+```
+
+This shows that:
+
+trace_id and span_id are automatically attached to log lines for incoming HTTP requests.
+
+#### 6.2.2 How I Would Search Logs by Trace ID
+If I see a trace in Jaeger with ID:
+
+8f3ac9b7e95b4c2b8d7f23e6c4a9e123
+
+then I can:
+
+Search in terminal or log file using grep:
+
+```
+bash
+Copy code
+grep "trace_id=8f3ac9b7e95b4c2b8d7f23e6c4a9e123" app.log
+```
+
+Or in a real setup with Elasticsearch or Loki, I could filter logs by:
+
+```
+text
+Copy code
+trace_id = "8f3ac9b7e95b4c2b8d7f23e6c4a9e123"
+```
+In summary:
+
+Traces → Logs:
+
+Copy trace_id from Jaeger, search logs for that trace_id.
+
+Logs → Traces:
+
+Copy trace_id from the log line, search in Jaeger by trace ID.
+
+This is how I implemented trace-to-log correlation.
+
+### 6.3 Trace Analysis
+#### 6.3.1 Identifying Bottleneck Spans
+
+I generated traces by repeatedly calling:
+
+curl http://localhost:8080/order
+
+In Jaeger UI:
+
+I selected service-a and clicked Find Traces.
+
+I opened a trace for /order.
+
+The trace showed three main spans:
+
+Span 1: Service A /order
+
+Span 2: Service B /process
+
+Span 3: Service C /db
+
+Because I added a Thread.sleep(1000) in Service C, its span duration was around 1000 ms, while other spans were much shorter.
+
+So:
+
+The bottleneck span was the /db span from Service C.
+
+This clearly shows that Service C is responsible for most of the latency.
+
+#### 6.3.2 Service Map / Dependencies
+From the traces, I can derive this simple service dependency graph:
+
+[Service A] → [Service B] → [Service C]
+
+Explanation:
+
+Service A depends on Service B.
+
+Service B depends on Service C.
+
+Service C is effectively simulating a database or external backend.
+
+In a larger system, this kind of graph helps identify:
+
+Central services
+
+High fan-in / fan-out
+
+Potential single points of failure
+
+#### 6.3.3 RCA Workflow for a Slow Request
+
+![diagram](images/TraceStatistics.png)
+
+A typical Root Cause Analysis (RCA) flow using my demo:
+
+Alert: “Latency for /order is high.”
+
+Open Jaeger and look at slow traces for service-a and operation /order.
+
+For a slow trace, inspect the span timeline.
+
+Identify which span took the most time (bottleneck):
+
+/db span in Service C is ~1000 ms.
+
+Check span attributes and service:
+
+It belongs to Service C, which simulates DB or external IO.
+
+Correlate with logs:
+
+Use the trace_id to find logs in Service C.
+
+Logs confirm that we intentionally delay the response.
+
+Conclusion (RCA):
+
+The root cause of high latency is slow processing in Service C (e.g., slow database or external dependency).
+
+### 6.4 Sampling and Its Impact
+To study sampling, I enabled probabilistic sampling in the OpenTelemetry Java agent for Service A.
+
+Example configuration (20% sampling):
+
+java -javaagent:../opentelemetry-javaagent.jar \
+  -Dotel.exporter.otlp.protocol=grpc \
+  -Dotel.exporter.otlp.endpoint=http://localhost:4317 \
+  -Dotel.traces.sampler=traceidratio \
+  -Dotel.traces.sampler.arg=0.20 \
+  -Dotel.resource.attributes=service.name=service-a \
+  -Dotel.metrics.exporter=none \
+  -Dotel.logs.exporter=none \
+  -jar target/demo-0.0.1-SNAPSHOT.jar
+  
+Then I sent multiple requests:
+
+for i in {1..20}; do curl http://localhost:8080/order
+
+Observations:
+
+In Jaeger, I saw fewer traces than the number of requests sent.
+
+This is expected because only about 20% of traces were sampled and exported.
+
+Benefits:
+
+- Less storage and lower cost.
+
+- Less noise in the UI.
+
+Limitations:
+
+- Not every request is visible.
+
+- Rare issues might be missed if they happen in unsampled requests.
+
+- This showed me the trade-off between trace visibility and resource usage.
 
