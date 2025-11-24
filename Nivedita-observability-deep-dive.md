@@ -164,7 +164,7 @@ Tracking where each request went at multiple levels and how long it spent at eac
 
 ### Data Structure: Spans and Trace Context
 
-A trace is composed of multiple spans(multiple levels). As your request goes to multiple levels each level needs to know that this request belongs to so and so user this info is called span context. Along with the span context some special info is also forwarded that info is called baggage.
+A trace is composed of multiple spans(multiple levels). As your request goes to multiple levels each level needs to know that this request belongs to so and so trace or span this info is called span context. Along with the span context some special info is also forwarded that info is called baggage.
 If you add a lot of baggage the request becomes heavy and slow. Use baggae for important info only.
 
 Span Components:
