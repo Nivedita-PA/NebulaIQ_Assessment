@@ -1520,6 +1520,12 @@ Feature flag toggles
 1. Time-Series Graphs (Line, Area, Stacked)
 What it shows: Data changing over time
 
+![diagram](images/lineGraphDatadog.jpeg)
+
+![diagram](images/areaDatadog.jpeg)
+
+![diagram](images/stackedDatadog.png)
+
 Best for:
 - API latency over 24 hours
 - Error rate trends
@@ -1533,6 +1539,8 @@ Why use it:
 
 2. Gauges and Single-Stat Panels
 What it shows: One important number right now
+
+![diagram](images/guagesDD.png)
 
 Best for:
 - Current system health
@@ -1548,6 +1556,8 @@ Why use it:
 3. Heatmaps (Latency Distribution)
 What it shows: How data is distributed (many small values on left, few on right?)
 
+![diagram](images/heatMapDD.jpeg)
+
 Best for:
 - Request latency over time
 - Showing slow requests vs normal
@@ -1561,6 +1571,8 @@ Why use it:
 4. Histograms
 What it shows: How many requests fall into each time bucket?
 
+![diagram](images/histogramDD.png)
+
 Best for:
 - Request duration distribution
 - Error frequency breakdown
@@ -1572,6 +1584,8 @@ Why use it:
 
 5. Tables and Logs View
 What it shows: Structured list of data
+
+![diagram](images/logsViewDD.jpeg)
 
 Best for:
 - Comparing multiple services
@@ -1585,6 +1599,12 @@ Why use it:
 
 ### Dashboard Organization
 #### Infrastructure Dashboards
+
+![diagram](images/ApplicationDashboardDD.png)
+
+![diagram](images/CPUMemoryDiskNwDD.png)
+
+![diagram](images/networkDD.png)
 
 Shows: Server health, resources
 
